@@ -31,8 +31,9 @@ turbo_boost_status() {
     [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo "🔥"
 }
 
+[[ -f /tmp/rsync_timeshift.log ]] && echo "$(tail -n 2 /tmp/rsync_timeshift.log | head -n 1)${SEP}"
 
-# python parse_backup_progress.py 2>&1
+python parse_backup_progress.py 2>&1
 echo -n "$(temperature)°C"
 turbo_boost_status
 consumption_value=$(consumption)
