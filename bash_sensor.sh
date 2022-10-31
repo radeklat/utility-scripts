@@ -31,7 +31,15 @@ turbo_boost_status() {
     [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo "🔥"
 }
 
-[[ -f /tmp/rsync_timeshift.log ]] && echo "$(tail -n 2 /tmp/rsync_timeshift.log | head -n 1)${SEP}"
+if [[ -f /tmp/rsync_timeshift.log ]]; then
+  line="$(tail -n 1 /tmp/rsync_timeshift.log)"
+  if [[ "$line" =~ ".* files" ]]; then
+    line="$(echo ${line} | sed 's/ files//')"
+  else
+    line="$(echo ${line} | cut -d " " -f 1-4)"
+  fi
+  echo -n "${line}${SEP}"
+fi
 
 python parse_backup_progress.py 2>&1
 echo -n "$(temperature)°C"
