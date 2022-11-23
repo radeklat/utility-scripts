@@ -63,7 +63,7 @@ do
       fi
 
       pauseend=$((break_len + $(date +%s)))
-      title="Take a $name break"
+      title="Take a $name $(($break_len / 60)) minutes break"
 
       while [[ $pauseend -gt $(date +%s) ]]; do
         rempause=$((pauseend - $(date +%s)))
