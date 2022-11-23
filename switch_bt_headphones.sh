@@ -2,8 +2,9 @@
 
 HEADPHONES_MAC="04:5D:4B:97:5D:34"
 
-# ED:10:02:9F:7F:92 = MX Master mouse
-KEEP_BLUETOOTH_ON_FOR="ED:10:02:9F:7F:92"
+# bluetoothctl
+# DD:CA:2A:12:9C:8B MX Master 3
+KEEP_BLUETOOTH_ON_FOR="DD:CA:2A:12:9C:8B"
 
 connected() {
     bluetoothctl info ${HEADPHONES_MAC} | grep -q "Connected: yes"
