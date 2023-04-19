@@ -28,7 +28,7 @@ battery_status() {
 }
 
 turbo_boost_status() {
-    [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo "🔥"
+    [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo -n "🔥"
 }
 
 if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -gt 0 ]]; then
@@ -53,14 +53,14 @@ fi
 
 #python parse_backup_progress.py 2>&1
 echo -n "$(temperature)°C"
-turbo_boost_status
+# turbo_boost_status
 consumption_value=$(consumption)
 
 if [[ "$(battery_status)" == "Charging" ]]; then
     time_to_full="$(time_to_full_charge)"
     [[ -n ${time_to_full} ]] && echo "${SEP}⚡${time_to_full}"
 elif [[ "${consumption_value}" != "0" ]]; then
-    printf "${SEP}%dW" "${consumption_value}"
+    printf "${SEP}%02dW" "${consumption_value}"
 fi
 
-echo "${SEP}"
+#echo "${SEP}"
