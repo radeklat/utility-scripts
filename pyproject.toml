@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "utility-scripts"
+version = "0.1.0"
+description = "Command line utility scripts"
+authors = ["Radek Lat <radek.lat@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "utility_scripts"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = {extras = ["dotenv"], version = "^1.10.7"}
+requests = "^2.28.2"
+
+
+[tool.poetry.group.dev.dependencies]
+black = {extras = ["d"], version = "^23.3.0"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
