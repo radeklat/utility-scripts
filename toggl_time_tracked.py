@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 from base64 import b64encode
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 
-from pydantic import BaseSettings
 import requests
+from pydantic import BaseSettings
 from pydantic.main import BaseModel
 
 
@@ -45,15 +45,17 @@ HEADERS: dict[str, str] = {
     "Authorization": "Basic %s"
     % b64encode(f"{settings.API_TOKEN}:api_token".encode()).decode("ascii"),
 }
+API_DATE_FMT: str = "%Y-%m-%d"
 
 
-def get_todays_time_entries() -> list[TimeEntry]:
-    today: str = datetime.today().strftime("%Y-%m-%d")
-    tomorrow: str = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+def get_this_week_time_entries() -> list[TimeEntry]:
+    today = datetime.today()
+    monday = today - timedelta(days=today.weekday())
+    sunday = monday + timedelta(days=6)
 
     data = requests.get(
         "https://api.track.toggl.com/api/v9/me/time_entries",
-        params={"start_date": today, "end_date": tomorrow},
+        params={"start_date": monday.strftime(API_DATE_FMT), "end_date": sunday.strftime(API_DATE_FMT)},
         headers=HEADERS,
     )
 
@@ -81,10 +83,11 @@ def calculate_duration(time_entries: list[TimeEntry]) -> tuple[int, State]:
 
 def main():
     print(settings.SEPARATOR, end="")
-    duration, state = calculate_duration(get_todays_time_entries())
+    duration, state = calculate_duration(get_this_week_time_entries())
 
     if state == State.RUNNING_SELECTED_PROJECT:
-        remaining = settings.DAILY_HOURS_BUDGET * 60 * 60 - duration
+        weekday = datetime.today().isoweekday()
+        remaining = settings.DAILY_HOURS_BUDGET * 60 * 60 * weekday - duration
         if remaining > 0:
             multiplier = 1
         else:
