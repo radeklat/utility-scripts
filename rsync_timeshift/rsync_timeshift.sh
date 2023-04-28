@@ -27,9 +27,16 @@ mirror_files() {
               stdbuf -i0 -o0 -e0 sed 's/  */ /g;s/ to consider//;s/^ //;s/ (.*//;s/\.\.\.//' >${LOG_FILE}
 }
 
+metered_connection() {
+  nmcli -f connection.metered connection show "$(nmcli -t -f GENERAL.CONNECTION --mode tabular device show $DEVICE | head -n1)" | grep -q "yes"
+  return $?
+}
+
 # has the log file been modified today already?
 if [[ -e $LOG_FILE && $(stat -c "%y" $LOG_FILE | cut -f 1 -d " ") == $(date +%Y-%m-%d) ]]; then
   echo "Backup has been executed today already. Skipping."
+elif metered_connection; then
+  echo "On a metered connection. Skipping."
 else
   mirror_files
   truncate -s 0 ${LOG_FILE}
