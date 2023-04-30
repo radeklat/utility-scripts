@@ -12,7 +12,8 @@ from pydantic.main import BaseModel
 class Settings(BaseSettings):
     API_TOKEN: str
     PROJECT_ID: int
-    DAILY_HOURS_BUDGET: int
+    BUDGET_HOURS_PER_DAY: int
+    BUDGET_DAYS_PER_WEEK: int
     SEPARATOR: str = "  |  "
 
     class Config:
@@ -64,12 +65,12 @@ def get_this_week_time_entries() -> list[TimeEntry]:
     return [TimeEntry(**time_entry) for time_entry in data.json()]
 
 
-def calculate_duration(time_entries: list[TimeEntry]) -> tuple[int, State]:
+def calculate_duration_in_seconds(time_entries: list[TimeEntry], project_id: int) -> tuple[int, State]:
     duration_sec = 0
     state: State = State.NOT_RUNNING
 
     for time_entry in time_entries:
-        if time_entry.project_id is None or time_entry.project_id != settings.PROJECT_ID:
+        if time_entry.project_id is None or time_entry.project_id != project_id:
             if time_entry.duration < 0:
                 state = State.RUNNING_OTHER_PROJECT
         elif time_entry.duration > 0:
@@ -83,18 +84,19 @@ def calculate_duration(time_entries: list[TimeEntry]) -> tuple[int, State]:
 
 def main():
     print(settings.SEPARATOR, end="")
-    duration, state = calculate_duration(get_this_week_time_entries())
+    duration_sec, state = calculate_duration_in_seconds(get_this_week_time_entries(), settings.PROJECT_ID)
 
     if state == State.RUNNING_SELECTED_PROJECT:
         weekday = datetime.today().isoweekday()
-        remaining = settings.DAILY_HOURS_BUDGET * 60 * 60 * weekday - duration
-        if remaining > 0:
+        elapsed_days = min(weekday, settings.BUDGET_DAYS_PER_WEEK)
+        remaining_sec = settings.BUDGET_HOURS_PER_DAY * 60 * 60 * elapsed_days - duration_sec
+        if remaining_sec > 0:
             multiplier = 1
         else:
             multiplier = -1
             print("-", end="")
 
-        print(datetime.utcfromtimestamp(remaining * multiplier).strftime("%H:%M").removeprefix("0"))
+        print(datetime.utcfromtimestamp(remaining_sec * multiplier).strftime("%H:%M").removeprefix("0"))
     else:
         print(state)
 
