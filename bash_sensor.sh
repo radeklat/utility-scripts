@@ -17,6 +17,12 @@ time_to_full_charge() {
     sed 's/time to full://;s/ *//g;s/hours/h/;s/minutes/m/;s/.[0-9]m/m/'
 }
 
+charging_wattage() {
+  upower -i /org/freedesktop/UPower/devices/battery_${BATTERY} | \
+  grep 'energy-rate' | \
+  sed 's/.*: *\([0-9]*\)\.[0-9]* W/\1/'
+}
+
 consumption() {
     local current="$(cat ${BAT_PATH}/current_now 2>/dev/null || echo '0')"
     local voltage="$(cat ${BAT_PATH}/voltage_now)"
@@ -52,15 +58,15 @@ if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -g
 fi
 
 #python parse_backup_progress.py 2>&1
-echo -n "$(temperature)°C"
+#echo -n "$(temperature)°C"
 # turbo_boost_status
 consumption_value=$(consumption)
 
 if [[ "$(battery_status)" == "Charging" ]]; then
     time_to_full="$(time_to_full_charge)"
-    [[ -n ${time_to_full} ]] && echo "${SEP}⚡${time_to_full}"
+    [[ -n ${time_to_full} ]] && echo "⚡${time_to_full} / $(charging_wattage)W"
 elif [[ "${consumption_value}" != "0" ]]; then
-    printf "${SEP}%02dW" "${consumption_value}"
+    printf "%02dW" "${consumption_value}"
 fi
 
 #echo "${SEP}"
