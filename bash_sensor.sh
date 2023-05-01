@@ -54,7 +54,7 @@ if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -g
   else
     line="$(echo ${line} | cut -d " " -f 1-4)"
   fi
-  echo -n "🔁 ${line}${SEP}"
+  echo -n "🔁 ${line}"
 fi
 
 #python parse_backup_progress.py 2>&1
@@ -64,9 +64,9 @@ consumption_value=$(consumption)
 
 if [[ "$(battery_status)" == "Charging" ]]; then
     time_to_full="$(time_to_full_charge)"
-    [[ -n ${time_to_full} ]] && echo "⚡${time_to_full} / $(charging_wattage)W"
+    [[ -n ${time_to_full} ]] && echo "${SEP}⚡${time_to_full} / $(charging_wattage)W"
 elif [[ "${consumption_value}" != "0" ]]; then
-    printf "%02dW" "${consumption_value}"
+    printf "${SEP}%02dW" "${consumption_value}"
 fi
 
 #echo "${SEP}"
