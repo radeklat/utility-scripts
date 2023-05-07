@@ -40,7 +40,7 @@ turbo_boost_status() {
 if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -gt 0 ]]; then
   line="$(tail -n 1 /tmp/rsync_timeshift.log)"
   if [[ "$line" =~ .*\ files ]]; then
-    line="$(echo ${line} | sed 's/ files//')"
+    line="$(echo ${line} | cut -d ' ' -f 2)"
     divider=1
     scale=""
     if [[ $line -ge 1000000 ]]; then
@@ -52,7 +52,7 @@ if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -g
     fi
     line=$(echo "scale=1; ${line} / ${divider}" | bc -l)${scale}
   else
-    line="$(echo ${line} | cut -d " " -f 1-4)"
+    line="$(echo ${line} | cut -d " " -f 1-3)"
   fi
   echo -n "🔁 ${line}${SEP}"
 fi
