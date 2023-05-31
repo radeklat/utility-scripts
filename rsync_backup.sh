@@ -42,23 +42,27 @@ mirror_home() {
       --delete \
       --delete-excluded \
       --prune-empty-dirs \
-      --exclude /home/rlat/SynologyDrive/*** \
-      --exclude /home/rlat/.pyenv/*** \
-      --exclude /home/rlat/.SynologyDrive/*** \
-      --exclude /home/rlat/***/.git \
-      --exclude /home/rlat/.cache/pypoetry \
-      --exclude /home/rlat/.cache/pre-commit \
-      --exclude /home/rlat/.cache/google-chrome \
-      --exclude /home/rlat/.config/Signal \
-      --exclude /home/rlat/.config/Franz \
-      --exclude /home/rlat/.config/google-chrome \
-      --exclude /home/rlat/.local/share/JetBrains/Toolbox \
-      --exclude /home/rlat/.local/share/Trash \
-      --exclude /home/rlat/.local/share/virtualenv \
-      --exclude /home/rlat/.local/lib \
-      --exclude /home/rlat/.pyenv \
-      --exclude /home/rlat/.npm \
-      --exclude /home/rlat/.nvm \
+      --exclude SynologyDrive \
+      --exclude .SynologyDrive \
+      --exclude='*/.git' \
+      --exclude='*/.venv' \
+      --exclude='*/__pycache__' \
+      --exclude='*/.mypy_cache' \
+      --exclude='*/.pytest_cache' \
+      --exclude='*/.ruff_cache' \
+      --exclude .cache/pypoetry \
+      --exclude .cache/pre-commit \
+      --exclude .cache/google-chrome \
+      --exclude .config/Signal \
+      --exclude .config/Franz \
+      --exclude .config/google-chrome \
+      --exclude .local/share/JetBrains/Toolbox \
+      --exclude .local/share/Trash \
+      --exclude .local/share/virtualenv \
+      --exclude .local/lib \
+      --exclude .pyenv \
+      --exclude .npm \
+      --exclude .nvm \
       /home/rlat ${RSYNC_SERVER}::${RSYNC_TARGET_FOLDER} | \
           stdbuf -i0 -o0 -e0 tr '\r' '\n' | \
               stdbuf -i0 -o0 -e0 sed 's/  */ /g;s/ to consider//;s/^ //;s/ (.*//;s/\.\.\.//;s/\(.*\)/🏡 \1/' >${LOG_FILE}
@@ -75,10 +79,9 @@ if [[ -e $LOG_FILE && $(stat -c "%y" $LOG_FILE | cut -f 1 -d " ") == $(date +%Y-
 elif metered_connection; then
   echo "On a metered connection. Skipping."
 else
-  echo "Backing up /timeshift"
-  mirror_timeshift
-  truncate -s 0 ${LOG_FILE}
   echo "Backing up /home/rlat"
   mirror_home
+  echo "Backing up /timeshift"
+  mirror_timeshift
   truncate -s 0 ${LOG_FILE}
 fi
