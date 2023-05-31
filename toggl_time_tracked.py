@@ -70,6 +70,9 @@ def calculate_duration_in_seconds(time_entries: list[TimeEntry], project_id: int
     state: State = State.NOT_RUNNING
 
     for time_entry in time_entries:
+        if time_entry.duration == 0:
+            continue
+
         if time_entry.project_id is None or time_entry.project_id != project_id:
             if time_entry.duration < 0:
                 state = State.RUNNING_OTHER_PROJECT
