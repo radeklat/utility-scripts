@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 
-HEADPHONES_MAC="04:5D:4B:97:5D:34"
+ROOT_FOLDER="$( cd "$( dirname "$0" )" && pwd )"
+cd "${ROOT_FOLDER}" || exit
 
-# Run:
-#   bluetoothctl devices
-# DD:CA:2A:12:9C:92 MX Master 3
-# 6C:93:08:61:89:FB Keychron K3 Pro
-KEEP_BLUETOOTH_ON_FOR=("DD:CA:2A:12:9C:92" "6C:93:08:61:89:FB")
+source .env
 
 connected() {
-    bluetoothctl info ${HEADPHONES_MAC} | grep -q "Connected: yes"
+    bluetoothctl info "${BT_SWITCH_HEADPHONES_MAC}" | grep -q "Connected: yes"
     return $?
 }
 
 can_turn_bluetooth_off() {
-  for mac in ${KEEP_BLUETOOTH_ON_FOR[@]}; do
-    if bluetoothctl info ${mac} | grep -q "Connected: yes"; then
+  for mac in "${BT_SWITCH_KEEP_BLUETOOTH_ON_FOR[@]}"; do
+    if bluetoothctl info "${mac}" | grep -q "Connected: yes"; then
       return 1
     fi
   done
@@ -30,7 +27,7 @@ notify () {
 
 if connected; then
     notify "Disconnecting 🎧"
-    bluetoothctl disconnect ${HEADPHONES_MAC}
+    bluetoothctl disconnect "${BT_SWITCH_HEADPHONES_MAC}"
     if can_turn_bluetooth_off; then
         echo "Turning off bluetooth"
         notify "Bluetooth OFF"
@@ -44,7 +41,7 @@ else
     fi
     echo -n "Trying to connect "
     for i in $(seq 1 30); do
-        bluetoothctl connect ${HEADPHONES_MAC} | grep -q "\[[^]]*NEW[^]]*\] Transport"
+        bluetoothctl connect "${BT_SWITCH_HEADPHONES_MAC}" | grep -q "\[[^]]*NEW[^]]*\] Transport"
         if [[ $? -eq 0 && connected ]]; then
             echo " connected."
             notify "🎧 connected"
