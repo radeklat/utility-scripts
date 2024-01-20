@@ -8,8 +8,8 @@ SHORT_BREAK_CNT=4
 yad --version >/dev/null 2>&1
 
 if [[ $? -ne 252 ]]; then
-    echo "Please install yad."
-    exit 1
+    echo "yad is not installed ..."
+    sudo apt install yad
 fi
 
 # run if user hits control-c
