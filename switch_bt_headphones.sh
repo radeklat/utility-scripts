@@ -4,6 +4,7 @@ ROOT_FOLDER="$( cd "$( dirname "$0" )" && pwd )"
 cd "${ROOT_FOLDER}" || exit
 
 source .env
+source shared.sh
 
 connected() {
     bluetoothctl info "${BT_SWITCH_HEADPHONES_MAC}" | grep -q "Connected: yes"
@@ -26,17 +27,17 @@ notify () {
 }
 
 if connected; then
-    notify "Disconnecting 🎧"
+    notify -i "audio-headphones" "Disconnecting ..."
     bluetoothctl disconnect "${BT_SWITCH_HEADPHONES_MAC}"
     if can_turn_bluetooth_off; then
         echo "Turning off bluetooth"
-        notify "Bluetooth OFF"
+        notify -i "bluetooth-disabled" "Bluetooth OFF"
         rfkill block bluetooth
     fi
 else
     if rfkill list bluetooth | grep -q "Soft blocked: yes"; then
       echo "Turning on bluetooth"
-      notify "Bluetooth ON"
+      notify -i "bluetooth-active" "Bluetooth ON"
       rfkill unblock bluetooth
     fi
     echo -n "Trying to connect "
@@ -44,15 +45,15 @@ else
         bluetoothctl connect "${BT_SWITCH_HEADPHONES_MAC}" | grep -q "\[[^]]*NEW[^]]*\] Transport"
         if [[ $? -eq 0 && connected ]]; then
             echo " connected."
-            notify "🎧 connected"
+            notify -i "audio-headphones"  "Connected ✅"
             exit 0
         fi
         echo -n "."
         sleep 1
         if [[ i -eq 1 ]]; then
-            notify "Connecting 🎧"
+            notify -i "audio-headphones" "Connecting ..."
         fi
     done
     echo " not connected."
-    notify "🎧 not connected"
+    notify -i "audio-headphones" "Not connected ❌"
 fi

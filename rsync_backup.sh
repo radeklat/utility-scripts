@@ -6,6 +6,7 @@ cd "${ROOT_FOLDER}" || exit
 LOG_FILE="/tmp/rsync_timeshift.log"
 
 source .env
+source shared.sh
 
 mirror_timeshift() {
   stdbuf -i0 -o0 -e0 rsync \
@@ -75,13 +76,15 @@ metered_connection() {
 
 # has the log file been modified today already?
 if [[ -e $LOG_FILE && $(stat -c "%y" $LOG_FILE | cut -f 1 -d " ") == $(date +%Y-%m-%d) ]]; then
-  echo "Backup has been executed today already. Skipping."
+    echo "Backup has been executed today already. Skipping."
+elif ! server_available; then
+    notify_network_error "Skipping backup" "Backup server is not available"
 elif metered_connection; then
-  echo "On a metered connection. Skipping."
+    notify_network_error "Skipping backup" "On a metered connection"
 else
-  echo "Backing up /home/rlat"
-  mirror_home
-  echo "Backing up /timeshift"
-  mirror_timeshift
-  truncate -s 0 ${LOG_FILE}
+    notify_info "Backup started" "/home/rlat"
+    mirror_home
+    notify_info "Backup started" "/timeshift"
+    mirror_timeshift
+    truncate -s 0 ${LOG_FILE}
 fi
