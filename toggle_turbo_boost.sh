@@ -12,11 +12,6 @@ turbo_boost_on() {
     return $?
 }
 
-# $1: message
-notify () {
-    notify-send -t 5000 "$1"
-}
-
 if turbo_boost_on; then
     pkexec bash -c "echo '1' > ${TURBO_BOOST_PATH}"
     notify_info "Turbo Boost Off 🍃"
