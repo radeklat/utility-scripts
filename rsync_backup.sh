@@ -70,8 +70,13 @@ mirror_home() {
 }
 
 metered_connection() {
-  nmcli -f connection.metered connection show "$(nmcli -t -f GENERAL.CONNECTION --mode tabular device show $DEVICE | head -n1)" | grep -q "yes"
-  return $?
+    nmcli -f connection.metered connection show "$(nmcli -t -f GENERAL.CONNECTION --mode tabular device show $DEVICE | head -n1)" | grep -q "yes"
+    return $?
+}
+
+server_available() {
+    ping -c 1 -W 1 "${RSYNC_SERVER}" >/dev/null 2>&1
+    return $?
 }
 
 # has the log file been modified today already?
