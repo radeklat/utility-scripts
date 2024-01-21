@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DELAY_SEC=$((25*60))
+DELAY_SEC=$((55*60))
 SHORT_BREAK_SEC=$((5*60))
 LONG_BREAK_SEC=$((15*60))
-SHORT_BREAK_CNT=4
+SHORT_BREAK_CNT=3
 
 yad --version >/dev/null 2>&1
 
