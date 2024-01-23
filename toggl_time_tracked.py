@@ -2,21 +2,23 @@
 
 from base64 import b64encode
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from sys import argv
 
 import requests
-from pydantic import ConfigDict
-from pydantic.main import BaseModel
+from pydantic import ConfigDict, BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Budget(BaseModel):
+    hours_per_day: int
+    days_per_week: int = 5
 
 
 class Settings(BaseSettings):
     API_TOKEN: str
-    PROJECT_ID: int
-    BUDGET_HOURS_PER_DAY: int
-    BUDGET_DAYS_PER_WEEK: int
+    BUDGETS: dict[int, Budget] = Field(default_factory=list)
     SEPARATOR: str = "  |  "
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", env_prefix="toggl_")
 
@@ -31,8 +33,8 @@ class TimeEntry(BaseModel):
 
 
 class State(StrEnum):
-    RUNNING_SELECTED_PROJECT = ""
-    RUNNING_OTHER_PROJECT = "⚠️"
+    RUNNING_WITH_PROJECT = ""
+    RUNNING_NO_PROJECT = "⚠️"
     NOT_RUNNING = "⚪️"
 
 
@@ -40,8 +42,7 @@ settings = Settings()
 
 HEADERS: dict[str, str] = {
     "content-type": "application/json",
-    "Authorization": "Basic %s"
-    % b64encode(f"{settings.API_TOKEN}:api_token".encode()).decode("ascii"),
+    "Authorization": "Basic %s" % b64encode(f"{settings.API_TOKEN}:api_token".encode()).decode("ascii"),
 }
 API_DATE_FMT: str = "%Y-%m-%d"
 
@@ -66,57 +67,73 @@ def get_this_week_time_entries() -> list[TimeEntry]:
 
 
 def calculate_duration_in_seconds(
-    time_entries: list[TimeEntry], project_id: int
-) -> tuple[int, defaultdict[str, int], State]:
+    time_entries: list[TimeEntry],
+) -> tuple[int, defaultdict[str, int], State, int | None]:
     duration_sec = 0
     state: State = State.NOT_RUNNING
     per_day_duration_sec: defaultdict[str, int] = defaultdict(int)
+    project_id = None
+
+    for time_entry in time_entries:
+        if time_entry.duration < 0:
+            if time_entry.project_id is not None:
+                state = State.RUNNING_WITH_PROJECT
+                project_id = time_entry.project_id
+            else:
+                state = State.RUNNING_NO_PROJECT
+
+            break
+
+    if state != State.RUNNING_WITH_PROJECT:
+        return duration_sec, per_day_duration_sec, state, project_id
 
     for time_entry in time_entries:
         if time_entry.duration == 0:
             continue
 
-        if time_entry.project_id is None or time_entry.project_id != project_id:
-            if time_entry.duration < 0:
-                state = State.RUNNING_OTHER_PROJECT
+        if time_entry.project_id != project_id:
             continue
 
         if time_entry.duration > 0:
             duration = time_entry.duration
         else:
             duration = (datetime.now().astimezone() - time_entry.start).total_seconds()
-            state = State.RUNNING_SELECTED_PROJECT
 
         duration_sec += duration
         per_day_duration_sec[time_entry.start.strftime(API_DATE_FMT)] += duration
 
-    return duration_sec, per_day_duration_sec, state
+    return duration_sec, per_day_duration_sec, state, project_id
+
+
+def secs_to_hours_minutes(secs: int) -> str:
+    return datetime.fromtimestamp(secs, tz=timezone.utc).strftime("%H:%M").removeprefix("0")
 
 
 def main():
     print(settings.SEPARATOR, end="")
     time_entries = get_this_week_time_entries()
-    duration_sec, per_day_duration_sec, state = calculate_duration_in_seconds(
-        time_entries, settings.PROJECT_ID
-    )
+    (
+        duration_sec,
+        per_day_duration_sec,
+        state,
+        project_id,
+    ) = calculate_duration_in_seconds(time_entries)
 
-    if state == State.RUNNING_SELECTED_PROJECT:
-        weekday = datetime.today().isoweekday()
-        elapsed_days = min(weekday, settings.BUDGET_DAYS_PER_WEEK)
-        remaining_sec = (
-            settings.BUDGET_HOURS_PER_DAY * 60 * 60 * elapsed_days - duration_sec
-        )
-        if remaining_sec > 0:
-            multiplier = 1
+    if state == State.RUNNING_WITH_PROJECT:
+        if project_id in settings.BUDGETS:
+            budget = settings.BUDGETS[project_id]
+            weekday = datetime.today().isoweekday()
+            elapsed_days = min(weekday, budget.days_per_week)
+            remaining_sec = budget.hours_per_day * 60 * 60 * elapsed_days - duration_sec
+            if remaining_sec > 0:
+                multiplier = 1
+            else:
+                multiplier = -1
+                print("-", end="")
+
+            print(secs_to_hours_minutes(remaining_sec * multiplier))
         else:
-            multiplier = -1
-            print("-", end="")
-
-        print(
-            datetime.utcfromtimestamp(remaining_sec * multiplier)
-            .strftime("%H:%M")
-            .removeprefix("0")
-        )
+            print(secs_to_hours_minutes(duration_sec))
     else:
         print(state)
 
@@ -124,7 +141,7 @@ def main():
         if argv[1].startswith("-v"):
             print(
                 "\n".join(
-                    f"{day}: {datetime.utcfromtimestamp(duration_sec).strftime('%H:%M')}"
+                    f"{day}: {secs_to_hours_minutes(duration_sec)}"
                     for day, duration_sec in per_day_duration_sec.items()
                 )
             )
