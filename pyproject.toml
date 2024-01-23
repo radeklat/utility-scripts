@@ -11,15 +11,16 @@ packages = [{include = "utility_scripts"}]
 python = "^3.12"
 pydantic = {extras = ["dotenv"], version = "^2.0"}
 requests = "^2.28.2"
-delfino-core = {extras = ["dependencies-update"], version = "^7.2.4"}
-
+delfino-core = {extras = ["dependencies-update", "pyupgrade"], version = "^7.2.4"}
+pydantic-settings = "^2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["d"], version = "^23.3.0"}
+delfino-core = {extras = ["dependencies-update", "pyupgrade"], version = "^7.2.4"}
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.delfino.plugins.delfino-core]
-enable_commands = ["gh", "switch-python-version", "dependencies-update"]
+enable_commands = ["gh", "switch-python-version", "dependencies-update", "pyupgrade"]

@@ -7,8 +7,9 @@ from enum import StrEnum
 from sys import argv
 
 import requests
-from pydantic import BaseSettings
+from pydantic import ConfigDict
 from pydantic.main import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -17,22 +18,16 @@ class Settings(BaseSettings):
     BUDGET_HOURS_PER_DAY: int
     BUDGET_DAYS_PER_WEEK: int
     SEPARATOR: str = "  |  "
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        env_prefix = "toggl_"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", env_prefix="toggl_")
 
 
 class TimeEntry(BaseModel):
-    project_id: int | None
+    project_id: int | None = None
     duration: int
     duronly: bool
     start: datetime
-    stop: datetime | None
-
-    class Config:
-        extra = "ignore"
+    stop: datetime | None = None
+    model_config = ConfigDict(extra="ignore")
 
 
 class State(StrEnum):

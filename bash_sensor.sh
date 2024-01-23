@@ -60,6 +60,7 @@ fi
 #python parse_backup_progress.py 2>&1
 #echo -n "$(temperature)°C"
 # turbo_boost_status
+python toggl_time_tracked.py
 consumption_value=$(consumption)
 
 if [[ "$(battery_status)" == "Charging" ]]; then
