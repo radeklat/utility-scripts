@@ -75,8 +75,37 @@ metered_connection() {
 }
 
 server_available() {
-    ping -c 1 -W 1 "${RSYNC_SERVER}" >/dev/null 2>&1
+    if ! which nping >/dev/null 2>&1; then
+      notify_critical "Skipping backup" "nmap is not installed. Run 'sudo apt install nmap'."
+      return 1
+    fi
+
+    nping --tcp-connect -c 1 -p ${RSYNC_PORT} -q "${RSYNC_SERVER}" | grep -q "Successful connections: 1"
     return $?
+}
+
+fast_upload() {
+  local min_upload_speed_in_mb=5
+
+  if ! which speedtest >/dev/null 2>&1; then
+      notify_critical "Skipping backup" "speedtest is not installed. Run 'sudo apt install speedtest-cli'."
+      return 1
+    fi
+
+    local upload_speed_in_bytes="$(speedtest --no-download --single --csv | cut -d ',' -f 8)"
+    if [[ $? -ne 0 ]]; then
+      notify_error "Skipping backup" "Speed test failed."
+      return 1
+    fi
+
+    local upload_speed_in_mb=$(echo "${upload_speed_in_bytes} / 1024^2" | bc)
+    if [[ ${upload_speed_in_mb} -lt ${min_upload_speed_in_mb} ]]; then
+      upload_speed_in_mb=$(echo "scale=2; ${upload_speed_in_bytes} / 1024^2" | bc)
+      notify_network_error "Skipping backup" "Upload speed is ${upload_speed_in_mb} Mb. Required minimum is ${min_upload_speed_in_mb} Mb."
+      return 1
+    fi
+
+    return 0
 }
 
 # has the log file been modified today already?
@@ -86,6 +115,8 @@ elif ! server_available; then
     notify_network_error "Skipping backup" "Backup server is not available"
 elif metered_connection; then
     notify_network_error "Skipping backup" "On a metered connection"
+elif ! fast_upload; then
+    exit 1
 else
     notify_info "Backup started" "/home/rlat"
     mirror_home
