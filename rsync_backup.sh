@@ -92,7 +92,7 @@ fast_upload() {
       return 1
     fi
 
-    local upload_speed_in_bytes="$(speedtest --no-download --single --csv | cut -d ',' -f 8)"
+    local upload_speed_in_bytes="$(speedtest --no-download --secure --single --csv | cut -d ',' -f 8)"
     if [[ $? -ne 0 ]]; then
       notify_error "Skipping backup" "Speed test failed."
       return 1
