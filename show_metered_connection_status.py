@@ -11,7 +11,7 @@ def is_metered(interface):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-        ).stdout.strip()
+        ).stdout.strip().split(" ")[0]
     except subprocess.CalledProcessError as exc:
         if f"Device '{interface}' not found" in exc.stderr:
             return None
