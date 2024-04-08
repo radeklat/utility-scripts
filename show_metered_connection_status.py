@@ -30,6 +30,6 @@ statuses = {is_metered(_) for _ in ["enx32531cd5255a", "wlp0s20f3"]}
 if statuses == {None}:
     print("📵")
 elif False in statuses:
-    print("🌍️")
+    print("")
 else:
     print("📱")
