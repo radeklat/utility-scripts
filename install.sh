@@ -11,3 +11,10 @@ for script in "docker-pytest-cleanup" "switch_bt_headphones" "pause" "toggle_tur
   fi
 done
 
+for script in "k9s-update"; do
+  if [[ ! -f /home/rlat/bin/${script} ]]; then
+    ln -s ${ROOT_FOLDER}/${script}.py /home/rlat/bin/${script}
+  else
+    echo "'${script}' is already installed."
+  fi
+done
