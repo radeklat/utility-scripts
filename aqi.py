@@ -22,7 +22,7 @@ def get_aqi(prometheus_server: str, room: str) -> str:
 
     try:
         response = requests.get(query_url, timeout=5)
-    except requests.exceptions.ConnectTimeout:
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError):
         return ""
     except requests.exceptions.RequestException:
         return "Err"
