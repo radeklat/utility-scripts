@@ -18,10 +18,12 @@ class Settings(BaseSettings):
 
 def get_aqi(prometheus_server: str, room: str) -> str:
     query = f'sensors{{metric="aqi", sensor_name="total", sensor="{room}"}}'
-    query_url = f'{prometheus_server}/api/v1/query?query={query}'
+    query_url = f"{prometheus_server}/api/v1/query?query={query}"
 
     try:
-        response = requests.get(query_url, timeout=10)
+        response = requests.get(query_url, timeout=5)
+    except requests.exceptions.ConnectTimeout:
+        return ""
     except requests.exceptions.RequestException:
         return "Err"
 
@@ -29,12 +31,33 @@ def get_aqi(prometheus_server: str, room: str) -> str:
 
     json_response = response.json()
 
-    if 'data' in json_response and 'result' in json_response['data'] and json_response['data']['result']:
+    if "data" in json_response and "result" in json_response["data"] and json_response["data"]["result"]:
         return f"{float(json_response['data']['result'][0]['value'][1]):.0f}"
     else:
         return "N/A"
 
 
+def aqi_to_emoji(level: str) -> str:
+    if level in ["N/A", "Err"]:
+        return level
+
+    if not level:
+        return "🤍"
+
+    level = int(level)
+
+    if level >= 80:
+        return "💚"
+    if level >= 60:
+        return "💛"
+    if level >= 40:
+        return "🧡"
+    if level >= 20:
+        return "❤️"
+    return "💜"
+
+
 if __name__ == "__main__":
     settings = Settings()
-    print(" " + get_aqi(settings.PROMETHEUS_SERVER, settings.ROOM) + " | ")
+    aqi = get_aqi(settings.PROMETHEUS_SERVER, settings.ROOM)
+    print(f" {aqi_to_emoji(aqi)} | ")
