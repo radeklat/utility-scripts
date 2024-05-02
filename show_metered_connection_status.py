@@ -2,34 +2,46 @@
 
 import subprocess
 
+COMMAND = "nmcli -t -m multiline -f GENERAL.DEVICE,GENERAL.TYPE,GENERAL.STATE,GENERAL.METERED dev show".split()
+PING_CMD = "ping -I {interface} -q -c 1 -w 3 1.1.1.1"
 
-def is_metered(interface):
+
+def ping_interface(interface: str) -> bool:
     try:
-        status = subprocess.run(
-            ["nmcli", "-t", "-m", "tabular", "-f", "GENERAL.METERED", "dev", "show", interface],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        ).stdout.strip().split(" ")[0]
-    except subprocess.CalledProcessError as exc:
-        if f"Device '{interface}' not found" in exc.stderr:
-            return None
-        raise
-
-    if status == "no":
-        return False
-    if status == "yes":
+        subprocess.run(PING_CMD.format(interface=interface).split(), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
+    except subprocess.CalledProcessError:
+        return False
 
-    return None
+
+def is_metered(interface_types: list[str]) -> bool | None:
+    stdout = subprocess.run(COMMAND, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
+
+    devices = []
+    for device in stdout.strip().split("\n\n"):
+        device_info = {}
+        for line in device.split("\n"):
+            key, value = line.split(":", 1)
+            device_info[key] = value.strip()
+        devices.append(device_info)
+
+    metered = None
+    for device in devices:
+        if device["GENERAL.TYPE"] in interface_types:
+            if "connected" in device["GENERAL.STATE"] and ping_interface(device["GENERAL.DEVICE"]):
+                metered = False
+
+                if device["GENERAL.METERED"] == "yes":
+                    return True
+
+    return metered
 
 
-statuses = {is_metered(_) for _ in ["enx32531cd5255a", "wlp0s20f3"]}
+metered_connection = is_metered(["wifi", "ethernet"])
 
-if statuses == {None}:
-    print("📵")
-elif False in statuses:
-    print("")
+if metered_connection is None:
+    print("🟥")
+elif not metered_connection:
+    print("🟩")
 else:
-    print("📱")
+    print("🟧")
