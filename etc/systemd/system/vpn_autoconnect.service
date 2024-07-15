@@ -1,0 +1,22 @@
+# Check systemd version with `systemctl --version`
+# This config requires systemd >= 229
+# Supported statements in: https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
+# Logs are in /var/log/systemd/vpn_autoconnect.service.log
+
+[Unit]
+Description=VPN Auto-Connect Service
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+Environment="PYTHONPATH=/home/rlat/repos/radeklat/utility-scripts"
+ExecStart=/usr/bin/su -c 'DIPLAY=:0 sudo /home/rlat/repos/radeklat/utility-scripts/.venv/bin/python /home/rlat/repos/radeklat/utility-scripts/vpn_autoconnect.py --loop' rlat
+Restart=always
+RestartSec=5s
+User=root
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
