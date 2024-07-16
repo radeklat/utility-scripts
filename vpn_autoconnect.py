@@ -7,7 +7,7 @@ from pathlib import Path
 from time import sleep
 from typing import Never
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,10 +16,12 @@ class Settings(BaseSettings):
     RECHECK_INTERVAL_SEC: int = 60
     LOG_LEVEL: str = "INFO"
 
-    class Config:
-        env_prefix = "VPN_AUTOCONNECT_"
-        env_file = Path(__file__).parent / ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_prefix="VPN_AUTOCONNECT_",
+        env_file=Path(__file__).parent / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     @property
     def logging_log_level(self) -> int:
