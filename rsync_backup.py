@@ -197,7 +197,7 @@ def main() -> None:
 def status() -> None:
     if settings.rsync_log_file.exists():
         if (log := settings.rsync_log_file.read_text()) != "":
-            print(f"{SEP}{log}{SEP}", end="")
+            print(f"{log}{SEP}", end="")
 
 
 if __name__ == "__main__":
