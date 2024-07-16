@@ -10,11 +10,13 @@ Add:
 import datetime
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Iterable
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from shared.constants import SEP
 from shared.metered_connection_status import is_internet_connection_metered
 from shared.notify import Notifier
 
@@ -95,7 +97,9 @@ def _run_mirror_command(icon: str, source: str, exclude: Iterable[str] = ()) -> 
                     output = f"{parts[0]} {parts[1]} {parts[2]} {parts[3]}"
 
                 if output is not None:
-                    log.write(f"{icon} {output}\n")
+                    log.seek(0)
+                    log.truncate()
+                    log.write(f"🔁{icon} {output}")
                     log.flush()
 
     if process.returncode != 0:
@@ -190,5 +194,14 @@ def main() -> None:
     log_file.write_text("")
 
 
+def status() -> None:
+    if settings.rsync_log_file.exists():
+        if (log := settings.rsync_log_file.read_text()) != "":
+            print(f"{SEP}{log}{SEP}", end="")
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[-1] == "--status":
+        status()
+    else:
+        main()

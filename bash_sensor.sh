@@ -37,10 +37,6 @@ turbo_boost_status() {
     [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo -n "🔥"
 }
 
-if [[ -f /tmp/rsync_timeshift.log && $(stat -c "%b" /tmp/rsync_timeshift.log) -gt 0 ]]; then
-  echo -n "🔁 $(tail -n 1 /tmp/rsync_timeshift.log)${SEP}"
-fi
-
 #python parse_backup_progress.py 2>&1
 #echo -n "$(temperature)°C"
 # turbo_boost_status
