@@ -7,11 +7,12 @@ from pathlib import Path
 from time import sleep
 from typing import Never
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    ON_SSIDS: set[str]
+    ON_SSIDS: set[str] = Field(default={"*"})
     PROFILE_NAME: str
     RECHECK_INTERVAL_SEC: int = 60
     LOG_LEVEL: str = "INFO"
@@ -50,7 +51,7 @@ def get_active_autoconnect_wifi_ssid(ssids: set[str]) -> str | None:
         for line in result.stdout.strip().split("\n"):
             connection = Connection(*line.split(":", maxsplit=2))
 
-            if connection.active == "yes" and connection.ssid in ssids:
+            if connection.active == "yes" and (connection.ssid in ssids or not ssids):
                 return connection.ssid
     except Exception as e:
         LOG.error(f"Error checking WiFi connections: {e}")
@@ -106,8 +107,13 @@ def main(settings: Settings) -> None:
         LOG.debug(f"'{settings.PROFILE_NAME}' VPN connection is already active.")
         return
 
-    if (ssid := get_active_autoconnect_wifi_ssid(settings.ON_SSIDS)) is None:
+    if settings.ON_SSIDS == {"*"}:
+        LOG.debug("Any WiFi connection is set to be used for VPN auto-connect.")
+        ssid = "*"
+    elif (ssid := get_active_autoconnect_wifi_ssid(settings.ON_SSIDS)) is None:
         LOG.info("None of the specified WiFi connections to be used for VPN auto-connect are active.")
+        LOG.debug(f"Active WiFi connections: {ssid}")
+        LOG.debug(f"Auto-connect on WiFi connections: {settings.ON_SSIDS}")
         return
 
     if not ((now := datetime.now()).weekday() < 5 and 8 <= now.hour < 19):
@@ -115,7 +121,7 @@ def main(settings: Settings) -> None:
         return
 
     LOG.info(
-        f"WiFi connection '{ssid}' is active and set to be used for VPN auto-connect and "
+        f"WiFi connection '{ssid}' is active, set to be used for VPN auto-connect and "
         f"'{settings.PROFILE_NAME}' VPN connection is not active. Activating VPN..."
     )
     activate_vpn_connection(settings.PROFILE_NAME)
