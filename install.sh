@@ -24,6 +24,7 @@ done
 sudo cp etc/systemd/system/vpn_autoconnect.service  /etc/systemd/system/vpn_autoconnect.service
 sudo systemctl daemon-reload  # if it already exists
 sudo systemctl enable vpn_autoconnect.service
+sudo systemctl stop vpn_autoconnect.service
 sudo systemctl start vpn_autoconnect.service
 
 sudo cp etc/polkit-1/rules.d/50-org.freedesktop.NetworkManager.rules /etc/polkit-1/rules.d/
