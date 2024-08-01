@@ -33,13 +33,8 @@ battery_status() {
     cat ${BAT_PATH}/status
 }
 
-turbo_boost_status() {
-    [[ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) -eq 0 ]] && echo -n "🔥"
-}
-
 #python parse_backup_progress.py 2>&1
 #echo -n "$(temperature)°C"
-# turbo_boost_status
 python toggl_time_tracked.py
 consumption_value=$(consumption)
 
