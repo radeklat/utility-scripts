@@ -11,6 +11,7 @@ StartLimitBurst=3
 
 [Service]
 Type=simple
+SyslogIdentifier=vpn-autoconnect
 Environment="PYTHONPATH=/home/rlat/repos/radeklat/utility-scripts"
 ExecStart=/usr/bin/su -c 'DIPLAY=:0 sudo /home/rlat/repos/radeklat/utility-scripts/.venv/bin/python /home/rlat/repos/radeklat/utility-scripts/vpn_autoconnect.py --loop' rlat
 Restart=always
