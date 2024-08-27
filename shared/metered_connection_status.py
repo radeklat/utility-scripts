@@ -12,7 +12,7 @@ def ping_interface(interface: str) -> bool:
         return False
 
 
-def is_internet_connection_metered(interface_types: list[str] = ("wifi", "ethernet")) -> bool | None:
+def is_internet_connection_metered(interface_types: list[str] = ("wifi", "ethernet", "wireguard", "tun")) -> bool | None:
     stdout = subprocess.run(COMMAND, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
 
     devices = []
