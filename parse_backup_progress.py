@@ -4,7 +4,7 @@ import datetime
 
 
 ICON = "🔁 "
-DIVIDER = "  |  "
+DIVIDER = " | "
 
 
 def units_to_number(unit: str) -> int:

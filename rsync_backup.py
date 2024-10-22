@@ -11,6 +11,8 @@ import datetime
 import shutil
 import subprocess
 import sys
+from functools import cache
+from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Iterable
 
@@ -24,7 +26,7 @@ from shared.notify import Notifier
 class Settings(BaseSettings):
     rsync_ssh_user: str
     rsync_port: int
-    rsync_server: str
+    rsync_servers: list[str]
     rsync_target_folder: str
     rsync_log_file: Path = Path("/tmp/rsync_timeshift.log")
     rsync_min_upload_speed_in_mb: float = 5
@@ -72,7 +74,7 @@ def _run_mirror_command(icon: str, source: str, exclude: Iterable[str] = ()) -> 
         "--prune-empty-dirs",
         *(f"--exclude='{_}'" for _ in exclude),
         source,
-        f"{settings.rsync_server}::{settings.rsync_target_folder}",
+        f"{first_available_server()}::{settings.rsync_target_folder}",
     ]
     notifier.info(f"Backup started: {source}")
 
@@ -139,16 +141,19 @@ def mirror_home() -> None:
     ]
     _run_mirror_command("🏡", "/home/rlat", excludes)
 
-
-def server_available() -> bool:
+@cache
+def first_available_server() -> str | None:
     if not shutil.which("nping"):
         notifier.critical("Skipping backup: nmap is not installed.", "Run 'sudo apt install nmap'.")
-        return False
+        return None
 
-    return "Successful connections: 1" in run_command(
-        ["nping", "--tcp-connect", "-c", "1", "-p", str(settings.rsync_port), "-q", settings.rsync_server]
-    )
+    for server in settings.rsync_servers:
+        if "Successful connections: 1" in run_command(
+            ["nping", "--tcp-connect", "-c", "1", "-p", str(settings.rsync_port), "-q", server]
+        ):
+            return server
 
+    return None
 
 def fast_upload(min_upload_speed_in_mb: float) -> bool:
     if not shutil.which("speedtest"):
@@ -178,16 +183,22 @@ def main() -> None:
         print("Backup has been executed today already. Skipping.")
         return
 
-    if not server_available():
-        notifier.network_error("Skipping backup: Backup server is not available")
+    if (server := first_available_server()) is None:
+        notifier.network_error("Skipping backup: No backup server available")
         return
 
-    if is_internet_connection_metered():
-        notifier.network_error("Skipping backup: On a metered connection")
-        return
+    try:
+        server_on_private_network = IPv4Address(server).is_private
+    except ValueError:
+        server_on_private_network = False
 
-    # if not fast_upload(settings.rsync_min_upload_speed_in_mb):
-    #     return
+    if not server_on_private_network:
+        if is_internet_connection_metered():
+            notifier.network_error("Skipping backup: On a metered connection")
+            return
+
+        if not fast_upload(settings.rsync_min_upload_speed_in_mb):
+            return
 
     mirror_home()
     mirror_timeshift()
