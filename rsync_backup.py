@@ -116,6 +116,7 @@ def mirror_timeshift() -> None:
 
 
 def mirror_home() -> None:
+    # Vanished files logged into /var/log/auth.log
     excludes = [
         "SynologyDrive",
         ".SynologyDrive",
@@ -125,9 +126,21 @@ def mirror_home() -> None:
         "*/.mypy_cache",
         "*/.pytest_cache",
         "*/.ruff_cache",
+        ".cache/JetBrains/*/python_stubs",
+        ".cache/JetBrains/*/cpython-cache",
+        ".cache/JetBrains/*/log",
+        ".cache/JetBrains/*/remote_sources",
+        ".cache/JetBrains/*/projects/*/gittoolbox/blame-store-xodus",
+        '.cache/JetBrains/Toolbox/backup',
+        ".cache/mozilla/firefox/*/cache2",
+        ".cache/pip",
         ".cache/pypoetry",
         ".cache/pre-commit",
         ".cache/google-chrome",
+        ".cache/gnome-software/icons",
+        ".cache/mesa_shader_cache",
+        ".cache/thumbnails",
+        ".config/Lens/Cache"
         ".config/Signal",
         ".config/Franz",
         ".config/google-chrome",
@@ -138,6 +151,11 @@ def mirror_home() -> None:
         ".pyenv",
         ".npm",
         ".nvm",
+        ".platformio",
+        ".var/app/*/cache",
+        ".var/app/*/config/*/Partitions/*/Service Worker/CacheStorage",
+        ".var/app/*/config/*/Service Worker/CacheStorage",
+        ".var/app/*/config/*/Cache",
     ]
     _run_mirror_command("🏡", "/home/rlat", excludes)
 
