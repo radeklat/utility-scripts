@@ -1,15 +1,22 @@
 import subprocess
+from collections import Counter
 
 COMMAND = "nmcli -t -m multiline -f GENERAL.DEVICE,GENERAL.TYPE,GENERAL.STATE,GENERAL.METERED dev show".split()
-PING_CMD = "ping -I {interface} -q -c 1 -w 3 1.1.1.1"
+PING_TARGETS = Counter(["1.1.1.1", "8.8.8.8"])
+PING_CMD = "ping -I {interface} -q -c 1 -w 3 {target}"
 
 
 def ping_interface(interface: str) -> bool:
-    try:
-        subprocess.run(PING_CMD.format(interface=interface).split(), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
-    except subprocess.CalledProcessError:
-        return False
+    for target, _count in PING_TARGETS.most_common():
+        try:
+            command = PING_CMD.format(interface=interface, target=target).split()
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            PING_TARGETS[target] += 1
+            return True
+        except subprocess.CalledProcessError:
+            pass
+
+    return False
 
 
 def is_internet_connection_metered(interface_types: list[str] = ("wifi", "ethernet", "wireguard", "tun")) -> bool | None:
