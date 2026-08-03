@@ -11,10 +11,10 @@ import datetime
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from functools import cache
 from ipaddress import IPv4Address
 from pathlib import Path
-from typing import Iterable
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,6 +42,18 @@ settings = Settings()
 notifier = Notifier()
 
 
+@dataclass
+class Source:
+    icon: str
+    path: Path
+
+
+SOURCES = [
+    Source("🏡", Path("/home/rlat")),
+    Source("⏳️", Path("/timeshift")),
+]
+
+
 def run_command(command: list[str]) -> str:
     result = subprocess.run(command, text=True, capture_output=True)
     if result.returncode != 0:
@@ -54,14 +66,14 @@ def _format_number(number):
         if number > divider:
             return f"{number / divider:.{precision}f}{unit}"
 
+def _run_mirror_command(source: Source, dry_run: bool) -> None:
+    exclude_from_filename = str(source.path).replace("/", "_").strip("_") + ".txt"
+    exclude_from = Path(__file__).parent / "rsync_exclude_patterns" / exclude_from_filename
 
-def _run_mirror_command(icon: str, source: str, exclude: Iterable[str] = ()) -> None:
     command = [
         "rsync",
         "-e",
         f"ssh -l {settings.rsync_ssh_user} -p {settings.rsync_port}",
-        "--info=name0,del0,progress2",
-        "--progress",
         "--inplace",
         "--links",
         "--hard-links",
@@ -72,12 +84,20 @@ def _run_mirror_command(icon: str, source: str, exclude: Iterable[str] = ()) -> 
         "--delete",
         "--delete-excluded",
         "--prune-empty-dirs",
-        *(f"--exclude='{_}'" for _ in exclude),
-        source,
+        *([f"--exclude-from={exclude_from}"] if exclude_from.exists() else []),
+        *(["--list-only"] if dry_run else ["--info=name0,del0,progress2", "--progress"]),
+        source.path,
         f"{first_available_server()}::{settings.rsync_target_folder}",
     ]
-    notifier.info(f"Backup started: {source}")
 
+    if dry_run:
+        subprocess.run(command, text=True, check=False)
+        return
+
+    notifier.info(f"Backup started: {source.path}")
+
+    # Vanished files logged into /var/log/auth.log
+    # grep -R "file has vanished" /var/log/auth.log | sed 's/.*file has vanished: "\([^"]*\)".*/\1/g' | sort | uniq
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     # While there is a process output, read the output line by line and write it to the log file
@@ -101,63 +121,12 @@ def _run_mirror_command(icon: str, source: str, exclude: Iterable[str] = ()) -> 
                 if output is not None:
                     log.seek(0)
                     log.truncate()
-                    log.write(f"🔁{icon} {output}")
+                    log.write(f"🔁{source.icon} {output}")
                     log.flush()
 
     if process.returncode != 0:
         notifier.error(f"Backup failed: {source}", process.stderr.read())
-        return
 
-    return
-
-
-def mirror_timeshift() -> None:
-    _run_mirror_command("⏳️", "/timeshift")
-
-
-def mirror_home() -> None:
-    # Vanished files logged into /var/log/auth.log
-    excludes = [
-        "SynologyDrive",
-        ".SynologyDrive",
-        "*/.git",
-        "*/.venv",
-        "*/__pycache__",
-        "*/.mypy_cache",
-        "*/.pytest_cache",
-        "*/.ruff_cache",
-        ".cache/JetBrains/*/python_stubs",
-        ".cache/JetBrains/*/cpython-cache",
-        ".cache/JetBrains/*/log",
-        ".cache/JetBrains/*/remote_sources",
-        ".cache/JetBrains/*/projects/*/gittoolbox/blame-store-xodus",
-        '.cache/JetBrains/Toolbox/backup',
-        ".cache/mozilla/firefox/*/cache2",
-        ".cache/pip",
-        ".cache/pypoetry",
-        ".cache/pre-commit",
-        ".cache/google-chrome",
-        ".cache/gnome-software/icons",
-        ".cache/mesa_shader_cache",
-        ".cache/thumbnails",
-        ".config/Lens/Cache"
-        ".config/Signal",
-        ".config/Franz",
-        ".config/google-chrome",
-        ".local/share/JetBrains/Toolbox",
-        ".local/share/Trash",
-        ".local/share/virtualenv",
-        ".local/lib",
-        ".pyenv",
-        ".npm",
-        ".nvm",
-        ".platformio",
-        ".var/app/*/cache",
-        ".var/app/*/config/*/Partitions/*/Service Worker/CacheStorage",
-        ".var/app/*/config/*/Service Worker/CacheStorage",
-        ".var/app/*/config/*/Cache",
-    ]
-    _run_mirror_command("🏡", "/home/rlat", excludes)
 
 @cache
 def first_available_server() -> str | None:
@@ -172,6 +141,7 @@ def first_available_server() -> str | None:
             return server
 
     return None
+
 
 def fast_upload(min_upload_speed_in_mb: float) -> bool:
     if not shutil.which("speedtest"):
@@ -195,32 +165,36 @@ def fast_upload(min_upload_speed_in_mb: float) -> bool:
     return True
 
 
-def main() -> None:
+def main(*, dry_run: bool = False) -> None:
     log_file = settings.rsync_log_file
-    if log_file.exists() and log_file.stat().st_mtime >= datetime.datetime.now().timestamp() - 86400:
-        print("Backup has been executed today already. Skipping.")
-        return
 
-    if (server := first_available_server()) is None:
-        notifier.network_error("Skipping backup: No backup server available")
-        return
-
-    try:
-        server_on_private_network = IPv4Address(server).is_private
-    except ValueError:
-        server_on_private_network = False
-
-    if not server_on_private_network:
-        if is_internet_connection_metered():
-            notifier.network_error("Skipping backup: On a metered connection")
+    if not dry_run:
+        if log_file.exists() and log_file.stat().st_mtime >= datetime.datetime.now().timestamp() - 86400:
+            print("Backup has been executed today already. Skipping.")
             return
 
-        if not fast_upload(settings.rsync_min_upload_speed_in_mb):
+        if (server := first_available_server()) is None:
+            notifier.network_error("Skipping backup: No backup server available")
             return
 
-    mirror_home()
-    mirror_timeshift()
-    log_file.write_text("")
+        try:
+            server_on_private_network = IPv4Address(server).is_private
+        except ValueError:
+            server_on_private_network = False
+
+        if not server_on_private_network:
+            if is_internet_connection_metered():
+                notifier.network_error("Skipping backup: On a metered connection")
+                return
+
+            if not fast_upload(settings.rsync_min_upload_speed_in_mb):
+                return
+
+    for source in SOURCES:
+        _run_mirror_command(source, dry_run)
+
+    if not dry_run:
+        log_file.write_text("")
 
 
 def status() -> None:
@@ -232,5 +206,7 @@ def status() -> None:
 if __name__ == "__main__":
     if sys.argv[-1] == "--status":
         status()
+    elif sys.argv[-1] == "--dry-run":
+        main(dry_run=True)
     else:
         main()
